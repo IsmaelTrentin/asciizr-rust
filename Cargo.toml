@@ -14,3 +14,6 @@ categories = ["ascii"]
 
 [dependencies]
 clap = { version = "4.3.11", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
