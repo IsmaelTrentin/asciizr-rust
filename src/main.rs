@@ -94,8 +94,13 @@ fn main() {
     let image_height = read_uint32_le(&bytes, IMAGE_HEIGHT_OFFSET).unwrap();
     let bits_per_pixel = read_uint16_le(&bytes, BITS_PER_PIXEL_OFFSET).unwrap();
     let read_image_size = read_uint32_le(&bytes, IMAGE_SIZE_OFFSET).unwrap();
+
+    let bytes_per_pixel = (bits_per_pixel / 8) as u32;
+    let padding_bytes = (image_width * bytes_per_pixel) % 4;
+    let bytes_per_row = bytes_per_pixel * image_width + padding_bytes;
+
     let image_size = match read_image_size == 0 {
-        true => bytes.len() as u32 - pixel_array_offset,
+        true => bytes_per_row * image_height,
         false => read_image_size,
     };
 
@@ -122,9 +127,6 @@ fn main() {
     }
 
     let mut raw_pixels: Vec<Pixel> = Vec::with_capacity((image_height * image_width) as usize);
-    let bytes_per_pixel = (bits_per_pixel / 8) as u32;
-    let padding_bytes = (image_width * bytes_per_pixel) % 4;
-    let bytes_per_row = bytes_per_pixel * image_width + padding_bytes;
     // +1 because '\n' are added
     let mut ascii_art: Vec<u8> = Vec::with_capacity((image_height * (image_width + 1)) as usize);
     ascii_art.fill(0);
@@ -132,7 +134,7 @@ fn main() {
     let mut i = 0;
     let mut padding_offset = 0;
     loop {
-        if i >= image_size - padding_offset {
+        if i / bytes_per_pixel >= image_height * image_width {
             break;
         }
 
@@ -159,20 +161,17 @@ fn main() {
         true => custom_charmap,
         false => DEFAULT_CHAR_MAP.to_vec(),
     };
+    let mut newline_offset = 0;
     for y in (0..image_height).rev() {
-        for x in 0..(image_width + 1) {
+        for x in 0..image_width {
             let pixel_idx = (y * image_width + x) as usize;
-            let ascii_char_idx = ((image_height - y - 1) * (image_width + 1) + x) as usize;
+            let ascii_char_idx =
+                ((image_height - y - 1) * (image_width) + x) as usize + newline_offset;
 
             // println!(
             //     "y:{} x:{} pixel:{} asciidx:{}",
             //     y, x, pixel_idx, ascii_char_idx
             // );
-
-            if x == image_width {
-                ascii_art.insert(ascii_char_idx, b'\n');
-                continue;
-            }
 
             let brightness = &raw_pixels[pixel_idx].brightness();
             let char_idx = ((char_map.len() - 1) as f64 * brightness).round() as usize;
@@ -182,7 +181,12 @@ fn main() {
             };
 
             ascii_art.insert(ascii_char_idx, current_char as u8);
+
+            if x + 1 == image_width {
+                ascii_art.insert(ascii_char_idx + 1, b'\n');
+            }
         }
+        newline_offset += 1;
     }
 
     if args.output_file.is_some() {
