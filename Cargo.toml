@@ -1,0 +1,16 @@
+[package]
+name = "asciizr"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ismael Trentin"]
+description = "Ascii-art generator for bitmaps"
+readme = "README.md"
+homepage = "https://github.com/IsmaelTrentin/asciizr-rust"
+repository = "https://github.com/IsmaelTrentin/asciizr-rust"
+keywords = ["cli", "ascii", "ascii-art"]
+categories = ["ascii"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.3.11", features = ["derive"] }
